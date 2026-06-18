@@ -4,6 +4,16 @@ All notable changes to krafter are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to
 adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-06-18
+
+### Added
+
+- **Self-hosted marketplace** (`.claude-plugin/marketplace.json`): krafter now
+  serves as its own marketplace, so it installs through the standard flow
+  (`/plugin marketplace add iaserrat/krafter` → `/plugin install krafter@krafter`)
+  and updates via `/plugin update krafter` — no manual workarounds needed.
+- README install instructions and updated layout diagram.
+
 ## [0.1.0] - 2026-06-18
 
 First public release.

@@ -57,6 +57,15 @@ security holes," exploit-first threat assessment.
 **Not for:** systems you are not authorized to test, or patching the holes. It
 reports, never fixes.
 
+## Install
+
+krafter is its own marketplace. Add it, then install:
+
+```
+/plugin marketplace add iaserrat/krafter
+/plugin install krafter@krafter
+```
+
 ## Usage
 
 Both skills trigger from natural language and operate on the current branch's
@@ -71,7 +80,9 @@ red-team this PR before I merge it
 
 ```
 krafter/
-├── .claude-plugin/plugin.json   plugin manifest
+├── .claude-plugin/
+│   ├── plugin.json              plugin manifest
+│   └── marketplace.json         marketplace catalog (self-hosted)
 ├── CHANGELOG.md                 release notes
 ├── LICENSE                      MIT
 └── skills/

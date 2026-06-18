@@ -1,0 +1,15 @@
+{
+  "name": "krafter",
+  "owner": {
+    "name": "Ismael Serratos",
+    "url": "https://github.com/iaserrat"
+  },
+  "description": "Evidence-driven branch reviewers for code quality and security.",
+  "plugins": [
+    {
+      "name": "krafter",
+      "source": "./",
+      "description": "Evidence-driven branch reviewers for code quality and security. Every finding cites a measurement at file:line. No measurement, no finding."
+    }
+  ]
+}
