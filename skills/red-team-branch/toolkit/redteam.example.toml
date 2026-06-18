@@ -1,0 +1,29 @@
+# rtk config — copy to redteam.toml in your working dir and edit.
+# Everything here is overridable per-command by flags.
+
+[http]
+# Base URL the target app serves on locally (discover it with `rtk recon`).
+base_url = "http://localhost:8080"
+timeout_ms = 10000
+concurrency = 20
+insecure_tls = false        # true to accept self-signed local TLS
+# proxy = "http://127.0.0.1:8888"   # route through Burp/mitmproxy to inspect
+user_agent = "rtk/0.1"
+
+# Default headers sent on every request — the primary (low-privilege) actor "A".
+# This is "logged in as user A" for an IDOR sweep.
+[http.headers]
+# Authorization = "Bearer <attacker-token>"
+# Cookie = "session=<attacker-session>"
+
+# Named identities for cross-user proofs (sweep --compare, matrix --profiles,
+# bopla --as). Each profile REPLACES the default actor's auth headers.
+# The names "anon"/"none" are built in and mean "no credentials" (the control).
+# [profiles.b]
+# Authorization = "Bearer <second-user-token>"
+
+[safety]
+# Hosts to treat as in-scope besides localhost (e.g. a docker host alias).
+allow_hosts = ["host.docker.internal"]
+# Hard gate. Leave false. Only ever true with explicit written authorization.
+allow_remote = false

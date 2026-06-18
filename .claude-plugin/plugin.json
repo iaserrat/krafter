@@ -1,0 +1,11 @@
+{
+  "name": "krafter",
+  "description": "Evidence-driven branch reviewers for code quality and security. Every finding cites a measurement at file:line. No measurement, no finding.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "homepage": "https://github.com/iaserrat/krafter",
+  "repository": "https://github.com/iaserrat/krafter",
+  "author": {
+    "name": "Ismael Serratos"
+  }
+}

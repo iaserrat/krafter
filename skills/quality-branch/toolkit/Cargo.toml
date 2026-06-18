@@ -1,0 +1,27 @@
+[package]
+name = "cqt-toolkit"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/iaserrat/krafter"
+description = "cqt — deterministic code-quality measurement toolkit driven by the quality-branch skill"
+
+[[bin]]
+name = "cqt"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+# Metrics engine: Mozilla's tree-sitter-based analyzer. The crates.io release
+# (0.0.25) is stale; master is maintained and ships current grammars, so we pin
+# a reviewed commit SHA (reproducible, auditable — not a moving branch).
+rust-code-analysis = { git = "https://github.com/mozilla/rust-code-analysis", rev = "37e5d83c056c8cbf827223d5814a93c5218df1a9" }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+opt-level = 2
