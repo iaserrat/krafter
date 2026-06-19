@@ -95,7 +95,7 @@ Discover, in roughly this order:
 Build the toolkit once (needs Rust; see `toolkit/README.md`):
 
 ```bash
-cd toolkit && make setup        # verifies cargo, builds target/release/cqt
+test -x toolkit/target/release/cqt || (cd toolkit && make setup)   # idempotent: skips the rebuild if already built
 ```
 
 Record the target/scope in two or three lines — it becomes the report header.
@@ -182,6 +182,23 @@ template's `Summary` section.
 
 Use `references/smell-catalog.md` for the vocabulary of quality smell classes and which `cqt` signal
 surfaces each.
+
+### Then open it in the browser
+
+After writing the Markdown report, render it as a single self-contained **HTML** file and open it so the
+reader sees the findings immediately — same content, presented for reading:
+
+- **Minimal editorial style.** One readable column (`max-w-3xl mx-auto`, generous vertical rhythm), a
+  clear type hierarchy, a restrained palette — a well-typeset article, not a dashboard. Use **Tailwind**
+  via the Play CDN (`<script src="https://cdn.tailwindcss.com"></script>`); monospace for `file:line`,
+  measurements, and code; reserve color for the merge-readiness verdict and the `MEASURED`/`CONSIDER`
+  distinction only. No cards, no chrome, no logos.
+- **Save to `/tmp` and overwrite on rerun.** Write to the stable path `/tmp/quality-<branch>.html`
+  (sanitize any `/` in the branch name to `-`); overwrite it if it exists, so a rerun refreshes the same
+  file instead of piling up renders.
+- **Open it:** `open /tmp/quality-<branch>.html` (macOS) / `xdg-open` (Linux).
+
+The Markdown report in the repo root stays the source of record; the HTML is the read-only view.
 
 ## Calibrate to the ask
 

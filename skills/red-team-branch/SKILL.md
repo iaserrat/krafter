@@ -77,6 +77,20 @@ BASE=$(git -C "$REPO" symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null 
 BASE=${BASE:-$(git -C "$REPO" rev-parse --verify -q main >/dev/null && echo main || echo master)}
 ```
 
+**Build the toolkit first — here in recon, not in a later phase.** `rtk` is your default instrument for
+the _entire_ assessment: recon (below), the credential-free baseline, and the Phase 3 proofs all run
+through it. Provision it before you do anything else, exactly as the sibling skills build their tool in
+Phase 0 (needs Rust; see `toolkit/README.md`):
+
+```bash
+test -x toolkit/target/release/rtk || (cd toolkit && make setup)   # idempotent: skips the rebuild if already built
+```
+
+Deferring this build is the trap that pushes you toward a weaker hand-rolled `curl` later. Only if
+`cargo`/`make` is genuinely unavailable do you fall back to the manual `docker ps`/`lsof` recon below —
+that is a true fallback, not an equal option. (Install Rust via rustup only as a last resort — see the
+repo root `README.md`.)
+
 Discover, in roughly this order — each answer sharpens the attack:
 
 1. **Stack** — languages, frameworks, runtimes (read the dependency manifests and top-level layout).
@@ -105,15 +119,15 @@ Discover, in roughly this order — each answer sharpens the attack:
    URL/port, and whether a step-debugger is available (the safest way to prove a sink is reached).
 6. **The live attack surface** — what is _already running_ on this machine. Do not assume you must
    boot the app fresh; a dev server, a `docker compose` stack, or a previous session is often already
-   listening, and that is your fastest path to a live probe. Enumerate it and **attack what you find**:
+   listening, and that is your fastest path to a live probe. Enumerate it and **attack what you find**.
+   The toolkit you built above does this in one shot (open ports + HTTP fingerprint + docker, as JSON):
+   ```bash
+   toolkit/target/release/rtk --config toolkit/redteam.toml recon --docker
+   ```
+   Only if `rtk` is unavailable (no Rust toolchain) fall back to the raw commands:
    ```bash
    docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}'   # running containers + published ports
    lsof -nP -iTCP -sTCP:LISTEN | grep -i LISTEN        # listening ports (macOS); or: ss -ltnp (Linux)
-   ```
-   Or, if you've built the toolkit (see Phase 3 — `cd toolkit && make setup`; needs Rust), in one
-   shot (open ports + HTTP fingerprint + docker, as JSON):
-   ```bash
-   toolkit/target/release/rtk --config toolkit/redteam.toml recon --docker   # build-free path: the docker ps / lsof above
    ```
    `rtk` reads `./redteam.toml` from the **current directory** (not `toolkit/`), so always pass
    `--config toolkit/redteam.toml` when running from the repo root — otherwise it silently falls back
@@ -121,15 +135,23 @@ Discover, in roughly this order — each answer sharpens the attack:
    Map each live service back to the branch's entry points: the app port is where you send Phase 3
    probes; a database/cache/queue port exposed to the host is itself a finding; an admin panel or
    internal service on a side port is extra surface. Point the toolkit's `base_url` at the app you found.
-   Then widen the map past what the diff shows (read-only GETs, same character as recon — these
-   _generate_ Phase 1 hypotheses, they don't just confirm them): `rtk discover` probes a sensitive-path
-   wordlist (admin, `.env`, `.git`, actuator, swagger) past a soft-404 filter, and
-   `rtk params --url <path>` finds undocumented inputs the server reacts to (debug/redirect/is_admin).
-   Run `rtk headers --url <url>` early to flag missing HSTS/CSP/cookie flags before you even read the
-   diff — cookie-without-SameSite on a login endpoint is a finding on its own and feeds CSRF chains.
-   If a GraphQL endpoint is listening, hit it with `rtk gql --introspection --batching --aliasing` now
-   to surface schema exposure and rate-limit bypasses as recon-phase hypotheses.
-   Fold any hidden route, parameter, header gap, or GraphQL surface into Phase 0b's scope.
+   **Run the credential-free baseline now — every assessment, regardless of what the diff looks like.**
+   These probes are recon hygiene, not proofs of a particular finding, so they fire even on a branch you
+   expect to be clean: a "clean" in-branch read is exactly when a real tool pass earns its keep, and a
+   header/CORS gap is a finding on its own no matter how the diff reads. They are read-only GETs, the
+   same character as recon — they _generate_ Phase 1 hypotheses, they don't just confirm them:
+   ```bash
+   toolkit/target/release/rtk --config toolkit/redteam.toml headers  --url http://localhost:<port>/    # cookie/HSTS/CSP/XFO gaps
+   toolkit/target/release/rtk --config toolkit/redteam.toml cors     --url http://localhost:<port>/api  # Origin reflection, ACAO=* + creds
+   toolkit/target/release/rtk --config toolkit/redteam.toml discover                                     # hidden/sensitive routes (admin, .env, .git, actuator)
+   toolkit/target/release/rtk --config toolkit/redteam.toml params   --url <path>                        # undocumented inputs (debug/redirect/is_admin)
+   ```
+   `rtk headers` cookie-without-SameSite on a login endpoint feeds CSRF chains; `rtk cors` Origin
+   reflection chains with a cookie session for cross-origin theft. If a GraphQL endpoint is listening,
+   add `rtk gql --introspection --batching --aliasing` to surface schema exposure and rate-limit
+   bypasses. Fold any hidden route, parameter, header gap, CORS reflection, or GraphQL surface into
+   Phase 0b's scope — a finding from the baseline is a finding regardless of whether the diff "looked"
+   exploitable.
 
 Record what you found in two or three lines — it becomes the report's "Target/Scope" and the shared
 context for any subagents you spawn.
@@ -323,9 +345,16 @@ Record the outcome: **PROVEN** (with the request/response or breakpoint observat
 ### Dynamic proof gate — clear this before you write any verdict
 
 Before Phase 4, build the **dynamic proof ledger**: one row per CONFIRMED critical/high finding and per
-complete kill chain. Each row must end in exactly one of:
+complete kill chain. Each row records **the proof mechanism used** — the exact `rtk` subcommand (or the
+breakpoint) that produced the evidence — alongside its status. The mechanism column has teeth: if a row
+is PROVEN by a hand-rolled `curl` for a vulnerability class that _has_ an `rtk` subcommand in the table
+above, that row does not pass the gate — re-prove it with the `rtk` probe (the substitution loses the
+structured cross-user verdict the probe exists to give). `curl`/breakpoint is legitimate only for a
+class `rtk` does not cover, a destructive sink (breakpoint), or when no binary exists and `cargo` is
+unavailable — name which applies in the row. Each row must end in exactly one of:
 
-- **PROVEN** — a live request/response or breakpoint observation is attached.
+- **PROVEN** — a live request/response or breakpoint observation is attached, and the mechanism column
+  names the `rtk` subcommand that produced it (or a named reason a non-`rtk` proof was required).
 - **COULD-NOT-REPRODUCE** — you ran the proof against the local instance and it did not reproduce; say
   why (often a prod-vs-local config gap, itself worth reporting).
 - **BLOCKED** — you could not run it, with a **named, legitimate** reason: no local instance exists or
@@ -345,21 +374,20 @@ A self-contained Rust CLI ships with this skill at `toolkit/`. It turns a static
 live, JSON-backed proof against the **local** surface you mapped. It is local-only by default (same
 Phase 3 rule), refusing non-local targets unless a host is allow-listed or `--allow-remote` is passed.
 
-Configure once, then drive it (stdout = JSON to fold into a finding; stderr = progress). **A prebuilt
-release binary often already exists at `toolkit/target/release/rtk` — check for it before building.**
-Building from source is the friction that tempts you toward a weaker hand-rolled proof, so do not pay
-it unless you have to:
+**You already built `rtk` in Phase 0a** — it is your default instrument, not a Phase-3 escalation, and
+you have been driving it since recon. Here you only point it at the cross-user identities and fire the
+mutating proofs. (stdout = JSON to fold into a finding; stderr = progress.) If the binary somehow is
+not present, the same idempotent build re-runs it:
 
 ```bash
-# use the existing binary if present; only build when it is genuinely missing
-test -x toolkit/target/release/rtk && echo "rtk ready" || (cd toolkit && make setup)
+test -x toolkit/target/release/rtk || (cd toolkit && make setup)   # normally a no-op by now — built in Phase 0a
 # then (optional) edit toolkit/redteam.toml: base_url, the attacker's header(s) [http.headers]=actor A,
 # AND a second identity under [profiles.b] — the second identity is what turns sweep/matrix/bopla
 # from a LIKELY guess into a PROVEN cross-user breach (the built-in `anon` profile = the control).
 ```
 
-Only when no binary exists AND `make`/`cargo` is unavailable must the user install the Rust toolchain
-(rustup) first — see the repo root `README.md`.
+Only if `make`/`cargo` is unavailable must the user install the Rust toolchain (rustup) first — see the
+repo root `README.md`.
 
 **The config file is optional — and flags are the natural fit since you just discovered these values
 in Phase 0a.** Pass them as globals instead of (or on top of) the file:
@@ -429,6 +457,24 @@ kill chain), tracked follow-ups (Medium/Low), and accept/monitor (Info / defense
 residual risk named). Each line names the finding #, the `file:line`, and the concrete move — not "add
 authz." Keep the offensive vocabulary; the reader is an engineer. If nothing is exploitable, say
 "nothing to fix" and stop — don't manufacture work. See the template's `Fix plan` section.
+
+### Then open it in the browser
+
+After writing the Markdown report, render it as a single self-contained **HTML** file and open it so the
+reader sees the attack narrative, kill chains, and proof ledger immediately — same content, presented
+for reading:
+
+- **Minimal editorial style.** One readable column (`max-w-3xl mx-auto`, generous vertical rhythm), a
+  clear type hierarchy, a restrained palette — a well-typeset article, not a dashboard. Use **Tailwind**
+  via the Play CDN (`<script src="https://cdn.tailwindcss.com"></script>`); monospace for `file:line`,
+  requests/responses, and `rtk` commands; reserve color for the one-word verdict and the severity
+  accents only. No cards, no chrome, no logos.
+- **Save to `/tmp` and overwrite on rerun.** Write to the stable path `/tmp/red-team-<branch>.html`
+  (sanitize any `/` in the branch name to `-`); overwrite it if it exists, so a rerun refreshes the same
+  file instead of piling up renders.
+- **Open it:** `open /tmp/red-team-<branch>.html` (macOS) / `xdg-open` (Linux).
+
+The Markdown report in the repo root stays the source of record; the HTML is the read-only view.
 
 ## What to attack aggressively
 

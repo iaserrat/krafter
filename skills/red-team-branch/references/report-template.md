@@ -68,7 +68,11 @@ step naming the finding that enables it. Rate by objective. Omit only if no find
 <Mandatory gate (SKILL Phase 3). One row per CONFIRMED critical/high finding and per complete kill
 chain. Every row resolves to PROVEN, COULD-NOT-REPRODUCE, or BLOCKED(named reason) — never left
 NEEDS-DYNAMIC. A verdict above this line is invalid while any row is unresolved. If nothing reached
-critical/high, say "no critical/high findings to prove" and move on.>
+critical/high, say "no critical/high findings to prove" and move on. The **Proof tool** column has
+teeth: name the exact `rtk` subcommand that produced the evidence. A row PROVEN by hand-rolled `curl`
+for a class that has an `rtk` subcommand does not pass — re-prove with the probe. `curl`/breakpoint is
+legitimate only for a class `rtk` does not cover, a destructive sink (breakpoint), or no-binary +
+no-`cargo`; state which in the row.>
 
 | Finding / chain | Class | Proof tool | Outcome | Evidence / blocker |
 |---|---|---|---|---|

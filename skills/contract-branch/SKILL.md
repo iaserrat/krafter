@@ -98,7 +98,7 @@ Discover, in roughly this order:
 Build the toolkit once (needs Rust; see `toolkit/README.md`):
 
 ```bash
-cd toolkit && make setup        # verifies cargo, builds target/release/ctk
+test -x toolkit/target/release/ctk || (cd toolkit && make setup)   # idempotent: skips the rebuild if already built
 ```
 
 Record the target/scope and the "what is public here" call in two or three lines — it becomes the report
@@ -189,6 +189,23 @@ Write to `contract-<branch>-<date>.md` in the repo root (offer the path; do not 
 in terms of the candidates, then the ordered list: what breaks callers (the confirmed `REMOVED` /
 `SIGNATURE_CHANGED` / `VISIBILITY_REDUCED`), what is merely additive, and what is unmeasured and needs a
 manual look. If the contract is unchanged, say "no breaking changes, no bump needed" and stop.
+
+### Then open it in the browser
+
+After writing the Markdown report, render it as a single self-contained **HTML** file and open it so the
+reader sees the semver call and findings immediately — same content, presented for reading:
+
+- **Minimal editorial style.** One readable column (`max-w-3xl mx-auto`, generous vertical rhythm), a
+  clear type hierarchy, a restrained palette — a well-typeset article, not a dashboard. Use **Tailwind**
+  via the Play CDN (`<script src="https://cdn.tailwindcss.com"></script>`); monospace for `file:line` and
+  the `before → after` signatures; reserve color for the semver verdict and the `MEASURED`/`CONSIDER`
+  distinction only. No cards, no chrome, no logos.
+- **Save to `/tmp` and overwrite on rerun.** Write to the stable path `/tmp/contract-<branch>.html`
+  (sanitize any `/` in the branch name to `-`); overwrite it if it exists, so a rerun refreshes the same
+  file instead of piling up renders.
+- **Open it:** `open /tmp/contract-<branch>.html` (macOS) / `xdg-open` (Linux).
+
+The Markdown report in the repo root stays the source of record; the HTML is the read-only view.
 
 ## Calibrate to the ask
 
