@@ -10,8 +10,9 @@
 
 # krafter
 
-**Two evidence-driven reviewers for the diff on your branch: one measures whether
-the change made the code worse, the other attacks it like an adversary.**
+**A growing family of evidence-driven reviewers for the diff on your branch — each
+one grounds every finding in a real measurement at a real `file:line`, never an
+opinion.**
 
 krafter is a [Claude Code](https://claude.com/claude-code) plugin. Most review
 tooling hands you opinions; krafter hands you measurements. Each skill runs a
@@ -92,14 +93,24 @@ krafter is its own marketplace. Add it, then install:
 
 ## Usage
 
-Both skills trigger from natural language and operate on the current branch's
-diff against its base:
+Invoke a skill **manually by name (recommended)** — explicit and deterministic
+about which reviewer runs:
+
+```
+/quality-branch
+/red-team-branch
+/contract-branch
+```
+
+Or trigger from natural language and let Claude pick the reviewer:
 
 ```
 review the code quality of this branch
 red-team this PR before I merge it
 is this branch a breaking change?
 ```
+
+Either way, each skill operates on the current branch's diff against its base.
 
 ## Layout
 
