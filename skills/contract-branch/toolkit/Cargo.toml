@@ -1,0 +1,32 @@
+[package]
+name = "ctk-toolkit"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/iaserrat/krafter"
+description = "ctk — deterministic contract / breaking-change measurement toolkit driven by the contract-branch skill"
+
+[[bin]]
+name = "ctk"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+# Extraction engine: tree-sitter, one uniform parse mechanism across languages.
+# Per-language contract rules are thin walks over real parse trees (node kinds
+# as data), not hand-rolled parsers — agnostic by construction. Grammar crates
+# are pinned to a set compatible with tree-sitter 0.24 (ABI 14).
+tree-sitter = "0.24"
+tree-sitter-rust = "0.23"
+tree-sitter-typescript = "0.23"
+tree-sitter-python = "0.23"
+tree-sitter-go = "0.23"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+opt-level = 2

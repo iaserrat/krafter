@@ -49,7 +49,9 @@ linter with opinions.
    is a claim _you_ must defend with evidence, not a default you reach by reading the happy path.
 2. **Prove, don't assert.** A finding is a claim about attacker capability — back it with a full taint
    trace (white box) or a live/breakpoint PoC (dynamic). Never write "could potentially" as if it
-   were a breach. If you have not proven it, mark it NEEDS-DYNAMIC and say so.
+   were a breach. If you have not proven it, mark it NEEDS-DYNAMIC and say so — but NEEDS-DYNAMIC is a
+   to-do for Phase 3, not a resting place: the dynamic proof gate must resolve every NEEDS-DYNAMIC
+   critical/high to PROVEN, COULD-NOT-REPRODUCE, or a named BLOCKED before any verdict.
 3. **Reach before depth.** Always state the _lowest-privileged_ actor who can trigger a thing. An
    unauthenticated bug outranks a same-impact admin-only bug. Prioritize by reachability × blast radius.
 4. **Hunt the alternate route.** A control on the happy path is not a control. For every guarded
@@ -256,15 +258,27 @@ owner_id=<me>` flips that field and reads it back; `callback` captures the blind
 
 ## Phase 3 — Dynamic: prove the survivors against a local instance
 
-Escalate **only** CONFIRMED-critical/high, complete kill chains, and NEEDS-DYNAMIC findings to a live
-test. This phase has real side effects — these are hard constraints:
+**Dynamic proof is mandatory, not a discretionary escalation.** If a local instance is reachable — one
+you found running in Phase 0a, or one that boots from the repo — and there is at least one CONFIRMED
+critical/high finding, a complete kill chain, or a NEEDS-DYNAMIC finding, you **must** prove it live
+before you report. Proving exploitation _is_ the job; you do not wait to be asked. A static-only report
+on an exploitable branch is an incomplete assessment, not a cautious one. You may finish without a given
+proof only when a named blocker applies (see the **Dynamic proof gate** below), and that blocker goes in
+the report.
+
+This phase has real side effects, so it carries hard constraints:
 
 - **Local only.** Target the local instance you discovered in Phase 0a (e.g. `http://localhost:<port>`)
   exclusively. Never staging, production, or any non-local host. If you cannot confirm it is local,
   do not send the request.
-- **Confirm with the user before the first dynamic action.** Say what you will start, what you will
-  send, and which finding/chain it proves. Name the exact `rtk` command (or breakpoint) you will run,
-  not just "a test" — the proof tool is chosen here, by class (see the routing rule below).
+- **Read-only proofs run immediately; mutating proofs confirm first.** The default proofs are read-only
+  and mutate nothing — run them against the confirmed-local target **without pausing to ask**: `sweep
+  --compare`, `matrix` with safe verbs (GET/HEAD), `headers`, `cors`, `gql --introspection`, `timing`,
+  `discover`, `params`, `recon`, and any breakpoint observation. **Confirm with the user only before the
+  first action that mutates state or could be destructive** — `bopla` writes, `race`, `fuzz --mutate`,
+  `smuggle` (raw TCP), state-changing `matrix` verbs (POST/PUT/PATCH/DELETE), or any non-local target —
+  naming the exact `rtk` command and the finding it proves. When unsure whether a probe writes, treat it
+  as mutating and confirm.
 - **No real sensitive data, no destructive payloads.** Prove with a _read_ or a breakpoint, not a
   mutation. Seeded/test accounts only.
 - **Clean up.** Remove any breakpoint/instrumentation and revert config. Defer to a companion run/debug
@@ -305,6 +319,25 @@ Two techniques:
 
 Record the outcome: **PROVEN** (with the request/response or breakpoint observation) or
 **COULD-NOT-REPRODUCE** (and why — often a prod-vs-local config difference, itself worth noting).
+
+### Dynamic proof gate — clear this before you write any verdict
+
+Before Phase 4, build the **dynamic proof ledger**: one row per CONFIRMED critical/high finding and per
+complete kill chain. Each row must end in exactly one of:
+
+- **PROVEN** — a live request/response or breakpoint observation is attached.
+- **COULD-NOT-REPRODUCE** — you ran the proof against the local instance and it did not reproduce; say
+  why (often a prod-vs-local config gap, itself worth reporting).
+- **BLOCKED** — you could not run it, with a **named, legitimate** reason: no local instance exists or
+  can be booted from the repo; the finding's class has no `rtk`/breakpoint proof _and_ firing it would
+  be destructive; or the user explicitly opted out of dynamic testing this run. "I didn't get to it",
+  "ran out of steps", "it's obviously exploitable", or "static evidence is enough" are **not** legitimate
+  blockers — go prove it.
+
+**You may not issue a Block / Fix-before-merge / Merge-with-follow-ups verdict while any ledger row is
+still NEEDS-DYNAMIC.** An unproven CONFIRMED critical/high with no named blocker means the assessment is
+unfinished. The ledger goes in the report so the reader sees exactly what was proven live, what didn't
+reproduce, and what was legitimately out of reach.
 
 ### Toolkit (`rtk`) — prove it fast
 
@@ -496,18 +529,22 @@ Treat these as **presumptive Critical** unless you can show the path does not ho
 - **Any kill chain that reaches one of the above — even when every individual link is lower severity.**
 
 Issue exactly one verdict: **Block** / **Fix-before-merge** / **Merge-with-follow-ups** /
-**No security-relevant findings**. "No findings" is a statement about _what you attacked_, not a
-guarantee — absence of evidence is not evidence of absence, so list what you probed and what you could
-not rule out.
+**No security-relevant findings** — but **only after the dynamic proof gate is cleared** (Phase 3): no
+ledger row for a CONFIRMED critical/high or kill chain may still be NEEDS-DYNAMIC. "No findings" is a
+statement about _what you attacked_, not a guarantee — absence of evidence is not evidence of absence,
+so list what you probed and what you could not rule out.
 
 ## Calibrate to the ask
 
-Scale effort to the request. "Quick red-team of this small branch" → Phases 0-2, a handful of
-high-conviction findings, chain what obviously chains, skip dynamic unless genuinely ambiguous. "Full
-adversarial assessment" / "be thorough" / "assume it's all broken" → wide parallel fan-out in Phase 1,
-exhaustive taint-tracing in Phase 2, aggressive kill-chain synthesis in Phase 2.5, dynamic proof for
-every critical/high and every complete chain, and a full report. When unsure, lean thorough — a missed
-breach of the crown jewels dwarfs the cost of extra reading.
+Scale effort to the request — but **dynamic proof of the top CONFIRMED critical/high is never what you
+cut.** What scales is breadth and probe weight, not whether you prove at all. "Quick red-team of this
+small branch" → Phases 0-2, a handful of high-conviction findings, chain what obviously chains, and
+still prove the top CONFIRMED critical/high (and any complete chain) live with the cheap read-only probes
+against the local instance; only when no instance is reachable does the gate let you stop with a BLOCKED
+ledger row. "Full adversarial assessment" / "be thorough" / "assume it's all broken" → wide parallel
+fan-out in Phase 1, exhaustive taint-tracing in Phase 2, aggressive kill-chain synthesis in Phase 2.5,
+dynamic proof for every critical/high and every complete chain, and a full report. When unsure, lean
+thorough — a missed breach of the crown jewels dwarfs the cost of extra reading.
 
 Tier the toolkit by weight, not just by phase. A _quick_ dynamic check means the cheap, bounded,
 high-signal proofs (`rtk sweep --compare`, `matrix --profiles`, `bopla`, a small `race`, one

@@ -64,6 +64,18 @@ step naming the finding that enables it. Rate by objective. Omit only if no find
 | 2 | Medium | ... | Mass assignment (API3) | any user | A | white box |
 | 3 | Low | ... | Info disclosure (API8) | any user | A | white box |
 
+## Dynamic proof ledger
+<Mandatory gate (SKILL Phase 3). One row per CONFIRMED critical/high finding and per complete kill
+chain. Every row resolves to PROVEN, COULD-NOT-REPRODUCE, or BLOCKED(named reason) — never left
+NEEDS-DYNAMIC. A verdict above this line is invalid while any row is unresolved. If nothing reached
+critical/high, say "no critical/high findings to prove" and move on.>
+
+| Finding / chain | Class | Proof tool | Outcome | Evidence / blocker |
+|---|---|---|---|---|
+| #1 / Chain A | BOLA (API1) | `rtk sweep --compare b` | PROVEN | A read B's record (200); anon 401 — req/resp below |
+| #4 | Mass assignment (API3) | `rtk bopla --field is_admin=true` | COULD-NOT-REPRODUCE | field rejected locally; prod config may differ |
+| #6 | RCE (injection) | breakpoint at exec sink | BLOCKED | no local instance boots (missing service creds) |
+
 ## Findings
 <one block per finding, ordered by severity — see the finding template below>
 

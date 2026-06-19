@@ -4,6 +4,40 @@ All notable changes to krafter are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to
 adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-06-18
+
+### Added
+
+- **`contract-branch` skill** with the bundled `ctk` Rust tool: deterministic,
+  formatter-proof breaking-change review of a branch's diff. Built on
+  **tree-sitter** — one uniform parse mechanism with per-language contract rules
+  as data. Extracts the full public contract surface (functions, methods, types,
+  struct/Go fields, enum variants, constants, and aliases, with normalized
+  signatures and visibility) at the base and the branch head across **Rust,
+  TypeScript/JavaScript, Python, and Go**, diffs them, and emits reason-coded
+  candidates — `REMOVED`, `REMOVED_DEPRECATED`, `SIGNATURE_CHANGED`,
+  `VISIBILITY_REDUCED`, `ADDED` — each proved by a `before → after` signature at
+  `file:line`, with an overall semver impact. Removal of an already-deprecated
+  symbol is surfaced distinctly and ranked lower.
+- **CI gate for `ctk assess`:** report-only by default; `--fail-on major|minor|any`
+  exits non-zero as a merge gate, and `--baseline <file>` excludes accepted breaks
+  from the gate while keeping them in the report.
+- Reformatting, reordering members, and body rewrites never flag — only real
+  token changes surface; unsupported languages and syntax errors are reported
+  honestly rather than as a clean contract.
+
+### Changed
+
+- **`red-team-branch`: dynamic proof is now enforced, not optional.** Phase 3
+  read-only proofs (`sweep --compare`, `matrix` GETs, `headers`, `cors`,
+  `gql --introspection`, `timing`, `discover`) run automatically against a
+  confirmed-local instance with no confirmation prompt; only mutating or
+  destructive proofs (and any non-local target) still confirm first. A mandatory
+  pre-verdict **dynamic proof ledger** blocks the verdict while any CONFIRMED
+  critical/high finding or kill chain is still `NEEDS-DYNAMIC` without a named
+  blocker, so the skill proves exploitation by default instead of on request. The
+  report template gains the ledger section.
+
 ## [0.1.1] - 2026-06-18
 
 ### Added

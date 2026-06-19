@@ -57,6 +57,30 @@ security holes," exploit-first threat assessment.
 **Not for:** systems you are not authorized to test, or patching the holes. It
 reports, never fixes.
 
+### 📐 contract-branch — does this branch break its callers?
+
+A bundled Rust tool (`ctk`), built on tree-sitter, extracts the branch's full
+public contract and diffs it against the base, flagging only real shape changes:
+
+- Public functions, methods, types, fields, variants, and constants removed, or
+  narrowed below public
+- Signatures changed: a param or field type added/removed/retyped, the return
+  changed, a rename
+- New public surface (additive — a minor bump, not a break)
+- One overall semver call (major / minor / none), each finding proved by a
+  `before → after` signature
+- Optional CI gate: `--fail-on major` exits non-zero on a breaking change, with a
+  `--baseline` for accepted breaks
+
+Formatter-proof: reformatting, reordering members, and body rewrites never flag —
+only a real token change surfaces. Reads contracts from Rust,
+TypeScript/JavaScript, Python, and Go.
+
+**Use it for:** "is this a breaking change," "will this break callers," "what
+semver bump does this PR need," public API/ABI review, a merge gate.
+**Not for:** patching the break, or languages outside the four (reported
+unmeasured). It reports, never fixes.
+
 ## Install
 
 krafter is its own marketplace. Add it, then install:
@@ -74,6 +98,7 @@ diff against its base:
 ```
 review the code quality of this branch
 red-team this PR before I merge it
+is this branch a breaking change?
 ```
 
 ## Layout
@@ -87,7 +112,8 @@ krafter/
 ├── LICENSE                      MIT
 └── skills/
     ├── quality-branch/          cqt, the Rust measurement toolkit
-    └── red-team-branch/         rtk, the adversarial security toolkit
+    ├── red-team-branch/         rtk, the adversarial security toolkit
+    └── contract-branch/         ctk, the breaking-change toolkit
 ```
 
 ## License
